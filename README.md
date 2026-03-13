@@ -10,7 +10,7 @@ Voice agent skills for AI coding agents. Make phone calls, manage them, monitor 
 In Claude Code:
 
 ```
-/plugin marketplace add bland-ai/bland-skills
+/plugin marketplace add CINTELLILABS/bland-skills
 ```
 
 ### 2. Install the Plugin
