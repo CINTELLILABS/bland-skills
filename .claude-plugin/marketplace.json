@@ -1,0 +1,24 @@
+{
+  "name": "bland-skills",
+  "owner": {
+    "name": "Bland AI"
+  },
+  "metadata": {
+    "description": "Skills for building voice AI agents with Bland AI",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "bland",
+      "description": "Complete skill set for Bland AI voice agents — create calls, monitor in real-time, stream live transcripts, listen to audio, and play recordings",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./setup-api-key",
+        "./create-call",
+        "./monitor-call",
+        "./live-listen"
+      ]
+    }
+  ]
+}
