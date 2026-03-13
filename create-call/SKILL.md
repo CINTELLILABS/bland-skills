@@ -74,7 +74,7 @@ curl -s -X POST https://api.bland.ai/v1/calls \
 | `max_duration` | number | Max call length in minutes |
 | `webhook` | string | Post-call webhook URL |
 | `language` | string | Language code (`en`, `es`, etc.) |
-| `tools` | object[] | Custom tool definitions for the agent |
+| `tools` | string[] | IDs of knowledge bases and/or custom tools (e.g. `["kb_...", "TL-..."]`) |
 | `transfer_phone_number` | string | Number to transfer to if needed |
 | `interruption_threshold` | number | 0-255, lower = more interruptible |
 | `model` | string | LLM model to use |
@@ -130,6 +130,26 @@ Use the `call-management` skill to poll for completion and retrieve results:
 RESULT=$(${CLAUDE_PLUGIN_ROOT}/bin/bland-poll.sh "$CALL_ID" 300)
 echo "$RESULT" | jq '{status, call_length, concatenated_transcript, recording_url}'
 ```
+
+## Attaching Knowledge Bases and Tools
+
+The `tools` parameter accepts an array of string IDs — knowledge base IDs and/or custom tool IDs:
+
+```json
+{
+  "phone_number": "+14155551234",
+  "task": "You are a support agent. Answer questions using your knowledge base.",
+  "tools": ["kb_01H8X9QK5R2N7P3M6Z8W4Y1V5T"],
+  "record": true
+}
+```
+
+Multiple tools and KBs can be combined:
+```json
+"tools": ["kb_01H8...", "TL-ba6c4237-..."]
+```
+
+**Important**: Knowledge bases must be in `COMPLETED` status before attaching. Use the `knowledge-base` skill to create and check KB status.
 
 ## Common Patterns
 

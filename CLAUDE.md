@@ -12,6 +12,8 @@ The API key should be stored in `$BLAND_API_KEY` environment variable.
 **Base URL**: `https://api.bland.ai`
 
 ## Key Endpoints
+
+### Calls
 - `POST /v1/calls` — Create outbound voice call
 - `GET /v1/calls/:call_id` — Get call details, transcript, recording URL
 - `GET /v1/calls?limit=N` — List recent calls
@@ -24,6 +26,13 @@ The API key should be stored in `$BLAND_API_KEY` environment variable.
 - `POST /v1/calls/:call_id/analyze` — Run post-call analysis
 - `GET /v1/recordings/:id` — Stream call recording audio
 
+### Knowledge Bases
+- `POST /v1/knowledge/learn` — Create KB from file upload, text, or web scrape
+- `GET /v1/knowledge` — List all knowledge bases (paginated)
+- `GET /v1/knowledge/:kb_id` — Get KB details and status
+- `PUT /v1/knowledge/:kb_id` — Update KB name/description
+- `DELETE /v1/knowledge/:kb_id` — Soft-delete a knowledge base
+
 ## Helper Scripts
 Shell scripts in `bin/` handle operations that require more than curl:
 - `bin/bland-monitor.sh` — Connect to active calls SSE stream, log events
@@ -35,3 +44,4 @@ Shell scripts in `bin/` handle operations that require more than curl:
 - **Single call**: Create → monitor via SSE or poll → get results → play recording
 - **Multi-call**: Start SSE stream → dispatch N calls → monitor all → get results as each completes
 - **Live transcript**: Connect to `/v1/calls/:id/transcript/stream` to see conversation in real-time
+- **KB-powered call**: Upload file/text → poll until COMPLETED → create call with `"tools": ["kb_id"]` (KB IDs are prefixed with `KB-`)

@@ -44,6 +44,7 @@ The agent will create a call, ask how you want to follow it (listen, watch trans
 | `setup-api-key` | Configure and validate your Bland AI API key |
 | `create-call` | Create outbound voice calls with phone number, task/pathway, voice, and optional parameters |
 | `call-management` | List calls, get details/status, stop calls, retrieve transcripts, play recordings, run analysis, monitor via SSE |
+| `knowledge-base` | Upload files/text/URLs to create knowledge bases, list/inspect/update/delete KBs, attach to calls via `tools` |
 | `live-listen` | Stream call audio through your speakers in real-time via WebSocket |
 
 ## Shell Scripts
@@ -54,13 +55,3 @@ The agent will create a call, ask how you want to follow it (listen, watch trans
 | `bin/bland-poll.sh <call_id> [timeout]` | Poll until call completes with adaptive intervals |
 | `bin/bland-play.sh <call_id> [--save file]` | Download and play call recording |
 | `bin/bland-listen.sh <call_id>` | Live audio streaming via WebSocket |
-
-## How Call Monitoring Works
-
-**Primary: SSE Stream** — Connect once to `GET /v1/calls/active/stream` and get real-time updates for ALL your calls. Events: `QUEUED → IN_PROGRESS → TRANSFERRED → COMPLETE`.
-
-**Fallback: Polling** — For simple one-off calls, poll `GET /v1/calls/:id` until `completed == true`.
-
-**Live Transcript** — Connect to `GET /v1/calls/:id/transcript/stream` to see the conversation in real-time.
-
-**Live Audio** — `POST /v1/calls/:id/listen` returns a WebSocket URL for streaming call audio to your speakers.
