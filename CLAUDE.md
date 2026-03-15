@@ -1,47 +1,78 @@
-# Bland AI Skills
+# Bland AI Plugin
 
-These skills teach you how to use the Bland AI voice agent API to make phone calls, manage call lifecycle, stream live transcripts, and play recordings.
+This plugin provides MCP tools and workflow skills for building voice AI agents with the Bland AI API.
+
+## Architecture
+
+- **MCP Server** (`dist/mcp-server.js`) — handles all Bland API calls. Auth and HTTP are managed by the server process; you never need curl or shell env setup.
+- **Skills** (`skills/`) — teach workflows: when to use personas vs raw calls, how to monitor call lifecycle, how to manage knowledge bases. Skills reference MCP tool names.
+- **Shell Scripts** (`bin/`) — handle operations requiring persistent connections (SSE streams, WebSocket audio) that can't go through MCP.
 
 ## Authentication
-All Bland API requests use the `authorization` header with a raw API key (NOT Bearer-prefixed):
-```
-authorization: org_your_api_key_here
-```
-The API key should be stored in `$BLAND_API_KEY` environment variable.
 
-**Base URL**: `https://api.bland.ai`
+The MCP server resolves the API key automatically using layered fallback:
 
-## Key Endpoints
+1. `BLAND_API_KEY` environment variable (recommended)
+2. Bland CLI config (`~/.config/bland-cli-nodejs/config.json`) if the CLI is installed
+
+No shell setup, no `source` commands, no env file loading needed. If the user hasn't set up auth yet, use the `setup-api-key` skill.
+
+## MCP Tools
+
+All API operations go through MCP tools (prefixed `bland_`):
 
 ### Calls
-- `POST /v1/calls` — Create outbound voice call
-- `GET /v1/calls/:call_id` — Get call details, transcript, recording URL
-- `GET /v1/calls?limit=N` — List recent calls
-- `GET /v1/calls/active` — List all currently active calls
-- `GET /v1/calls/active/stream` — SSE stream of all active call status updates
-- `GET /v1/calls/:call_id/transcript/stream` — SSE stream of live transcript for a call
-- `POST /v1/calls/:call_id/stop` — Stop an in-progress call
-- `POST /v1/calls/active/stop` — Stop all active calls
-- `POST /v1/calls/:call_id/listen` — Get WSS URL for live audio
-- `POST /v1/calls/:call_id/analyze` — Run post-call analysis
-- `GET /v1/recordings/:id` — Stream call recording audio
+- `bland_call_send` — Make outbound call (persona_id, task, or pathway_id)
+- `bland_call_list` — List recent calls
+- `bland_call_get` — Get call details, transcript, recording URL
+- `bland_call_stop` — Stop an in-progress call
+- `bland_call_stop_all` — Stop all active calls
+- `bland_call_active` — List active calls
+
+### Personas
+- `bland_persona_list` — List all personas
+- `bland_persona_get` — Get persona details
+- `bland_persona_create` — Create persona
+- `bland_persona_update` — Update draft version
+- `bland_persona_delete` — Delete persona
+- `bland_persona_promote` — Promote draft to production
 
 ### Knowledge Bases
-- `POST /v1/knowledge/learn` — Create KB from file upload, text, or web scrape
-- `GET /v1/knowledge` — List all knowledge bases (paginated)
-- `GET /v1/knowledge/:kb_id` — Get KB details and status
-- `PUT /v1/knowledge/:kb_id` — Update KB name/description
-- `DELETE /v1/knowledge/:kb_id` — Soft-delete a knowledge base
+- `bland_knowledge_list` — List knowledge bases
+- `bland_knowledge_create` — Create KB from text or web URLs
+- `bland_knowledge_get` — Get KB details and status
+- `bland_knowledge_delete` — Delete KB
 
-## Helper Scripts
-Shell scripts in `bin/` handle operations that require more than curl:
-- `bin/bland-monitor.sh` — Connect to active calls SSE stream, log events
-- `bin/bland-poll.sh <call_id>` — Poll until call completes (fallback)
-- `bin/bland-play.sh <call_id>` — Download and play call recording
-- `bin/bland-listen.sh <call_id>` — Live listen to in-progress call audio
+### Pathways
+- `bland_pathway_list` — List pathways
+- `bland_pathway_get` — Get pathway details
+- `bland_pathway_create` — Create pathway
+- `bland_pathway_chat` — Chat with pathway interactively
+- `bland_pathway_node_test` — Test individual node
+
+### Other
+- `bland_number_list` — List phone numbers
+- `bland_number_buy` — Purchase phone number
+- `bland_voice_list` — List available voices
+- `bland_tool_test` — Test custom tool
+- `bland_sms_send` — Send SMS/WhatsApp (Enterprise)
+- `bland_audio_generate` — Generate TTS audio
+
+## Shell Scripts
+
+For operations requiring persistent connections (SSE, WebSocket):
+- `bin/bland-monitor.sh` — SSE stream of active call status updates
+- `bin/bland-poll.sh <call_id>` — Poll until call completes
+- `bin/bland-play.sh <call_id>` — Download and play recording
+- `bin/bland-listen.sh <call_id>` — Live listen to call audio via WebSocket
+
+These scripts read `BLAND_API_KEY` from the environment.
 
 ## Common Patterns
-- **Single call**: Create → monitor via SSE or poll → get results → play recording
-- **Multi-call**: Start SSE stream → dispatch N calls → monitor all → get results as each completes
-- **Live transcript**: Connect to `/v1/calls/:id/transcript/stream` to see conversation in real-time
-- **KB-powered call**: Upload file/text → poll until COMPLETED → create call with `"tools": ["kb_id"]` (KB IDs are prefixed with `KB-`)
+
+- **Persona call**: `bland_persona_list` → pick one → `bland_call_send` with persona_id + phone_number
+- **Quick call**: `bland_call_send` with task + phone_number
+- **Monitor**: `bland_call_get` to check status, or `bin/bland-monitor.sh` for real-time SSE
+- **KB-powered call**: `bland_knowledge_create` → poll with `bland_knowledge_get` until COMPLETED → `bland_call_send` with tools array
+- **Persona workflow**: `bland_persona_create` → `bland_persona_update` (edits draft) → `bland_persona_promote` (makes live)
+- **SMS**: `bland_sms_send` with user_number + agent_number

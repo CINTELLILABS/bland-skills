@@ -1,24 +1,36 @@
 {
-  "name": "bland-skills",
+  "name": "bland-plugin",
   "owner": {
     "name": "Bland AI"
   },
   "metadata": {
-    "description": "Skills for building voice AI agents with Bland AI",
-    "version": "1.0.0"
+    "description": "Voice AI agent skills + MCP server for Bland AI — make calls, manage personas, knowledge bases, and more",
+    "version": "2.0.0"
   },
   "plugins": [
     {
       "name": "bland",
-      "description": "Complete skill set for Bland AI voice agents — create calls, monitor in real-time, stream live transcripts, listen to audio, and play recordings",
+      "description": "Complete toolkit for Bland AI voice agents — skills for workflow guidance, MCP server for API execution",
       "source": "./",
       "strict": false,
       "skills": [
-        "./setup-api-key",
-        "./create-call",
-        "./monitor-call",
-        "./live-listen"
-      ]
+        "./skills/setup-api-key",
+        "./skills/create-call",
+        "./skills/monitor-call",
+        "./skills/live-listen",
+        "./skills/personas",
+        "./skills/knowledge-base",
+        "./skills/send-sms"
+      ],
+      "mcpServers": {
+        "bland": {
+          "command": "node",
+          "args": ["dist/mcp-server.js"],
+          "env": {
+            "BLAND_API_KEY": "${BLAND_API_KEY}"
+          }
+        }
+      }
     }
   ]
 }
