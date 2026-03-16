@@ -1,6 +1,8 @@
-# Metabot Demo
+# Demo
 
-Bridges Bland AI voice calls and Twilio SMS with Telegram, using Claude Agent SDK as the brain.
+Bridges Bland AI voice calls and SMS with Telegram, using Claude Agent SDK as the brain.
+
+[Watch it in action](https://www.loom.com/share/387f781f653f4684b40e6075b8be3b22)
 
 ## Prerequisites
 
@@ -45,10 +47,10 @@ Bridges Bland AI voice calls and Twilio SMS with Telegram, using Claude Agent SD
 ## Demo Flow
 
 1. **You → Telegram**: "Schedule a haircut at Luxe Salon for me"
-2. **Metabot**: Dispatches an outbound call, monitors it, reports back
+2. **Agent**: Dispatches an outbound call, monitors it, reports back
 3. **Salon → Bland inbound**: Calls your number to propose times
-4. **Metabot → Telegram**: "Luxe Salon offered Thursday 2pm or Friday 10am"
+4. **Agent → Telegram**: "Luxe Salon offered Thursday 2pm or Friday 10am"
 5. **You → Telegram**: "Thursday at 2pm"
-6. **Metabot**: Calls salon back to confirm, reports result
+6. **Agent**: Calls salon back to confirm, reports result
 7. **Salon → SMS**: Sends confirmation text
-8. **Metabot → Telegram**: "Got SMS confirmation for Thursday 2pm"
+8. **Agent → Telegram**: "Got SMS confirmation for Thursday 2pm"
