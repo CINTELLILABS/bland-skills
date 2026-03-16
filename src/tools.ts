@@ -20,6 +20,18 @@ export interface McpTool {
 }
 
 export const MCP_TOOLS: McpTool[] = [
+  // ── Auth ──
+  {
+    name: "bland_auth_login",
+    description:
+      "Authenticate with Bland AI. Opens a browser for signup/login, then automatically saves the API key to local config. Returns immediately if already authenticated. On failure, returns manual fallback instructions.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
+
   // ── Calls ──
   {
     name: "bland_call_send",
@@ -540,6 +552,30 @@ export async function handleToolCall(
   args: Record<string, unknown>
 ): Promise<unknown> {
   switch (name) {
+    // ── Auth ──
+    case "bland_auth_login": {
+      const { handleAuthLogin } = await import("./auth.js");
+      const result = await handleAuthLogin();
+      if (result.success && result.already_authenticated) {
+        return "Already authenticated. Your API key is configured and working.";
+      }
+      if (result.success) {
+        return JSON.stringify({
+          status: "authenticated",
+          message: "API key saved to config. You are ready to make calls.",
+          api_key_preview: result.api_key ? result.api_key.slice(0, 8) + "..." : null,
+          phone_number: result.phone_number,
+          persona_id: result.persona_id,
+        });
+      }
+      return JSON.stringify({
+        status: "failed",
+        error: result.error,
+        manual_fallback:
+          "Ask the user to: 1) Go to https://app.bland.ai and sign up, 2) Copy their API key from Settings > API Keys, 3) Paste it here. Then save it to their environment or config.",
+      });
+    }
+
     // ── Calls ──
     case "bland_call_send": {
       const body: Record<string, unknown> = {
