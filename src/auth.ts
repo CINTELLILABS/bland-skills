@@ -157,7 +157,8 @@ export async function handleAuthLogin(): Promise<AuthResult> {
 
         try {
           const baseUrl = getBaseUrl();
-          const data = await exchangeToken(baseUrl, token, 1);
+          const response = await exchangeToken(baseUrl, token, 1);
+          const data = response.data;
 
           saveApiKeyToConfig(data.api_key);
 
