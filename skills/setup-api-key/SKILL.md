@@ -6,55 +6,41 @@ description: >
 user-invocable: true
 ---
 
-# Bland AI API Key Setup
+# Setting Up Your Bland AI API Key
 
-## How Bland Auth Works
+## Automatic Setup (Preferred)
 
-Authentication is resolved in layers. The Bland AI plugin checks these sources in order:
+Use the `bland_auth_login` tool. This will:
+1. Open the user's browser to the Bland AI signup/login page
+2. Wait for them to complete authentication
+3. Automatically save the API key to their local config
+4. Return the provisioned phone number and persona (for new metabot signups)
 
-1. **Environment variable** `BLAND_API_KEY` — checked first
-2. **Bland CLI config** at `~/.config/bland-cli-nodejs/config.json` — checked if the env var is not set
+If the tool returns `already_authenticated`, the user is good to go — skip to validation.
 
-If either source provides a valid key, all Bland MCP tools will authenticate automatically.
+If the tool returns `status: "authenticated"`, confirm to the user that setup is complete and mention their provisioned phone number if one was returned.
 
-API keys start with `org_` for organization keys.
+## Manual Fallback
 
-## Setup Steps
+If `bland_auth_login` fails (timeout, port issues, browser won't open), fall back to manual setup:
 
-### 1. Get an API Key
+1. Tell the user to visit **https://app.bland.ai** and create an account
+2. After signup, navigate to **Settings > API Keys** and copy the key (starts with `org_`)
+3. Ask the user to paste their API key
+4. Save it by telling the user to set the environment variable:
+   ```bash
+   export BLAND_API_KEY="org_your_key_here"
+   ```
+   Or store it in their shell profile (`~/.bashrc`, `~/.zshrc`) for persistence.
 
-Direct the user to: https://app.bland.ai/dashboard → Settings → API Keys
+## Validation
 
-### 2. Store the Key
+After setup (automatic or manual), validate the key works by calling `bland_call_list` with `limit: 1`.
 
-Recommend one of these approaches:
+- **Success**: Returns a list (even if empty) — the key is valid
+- **401 error**: Key is invalid — ask the user to try again
+- **403 error**: Key lacks permissions — user may need to check their org settings
 
-**Option A — Environment variable (preferred)**
+## Billing Issues
 
-Add the key to the user's shell profile (`~/.zshrc`, `~/.bashrc`, or `~/.bash_profile`):
-
-```
-export BLAND_API_KEY="org_your_key_here"
-```
-
-The user should restart their shell or source the profile after adding this.
-
-**Option B — Bland CLI login**
-
-If the user has the Bland CLI installed (`npm i -g @bland-ai/cli`), they can run:
-
-```
-bland auth login
-```
-
-This stores the key in `~/.config/bland-cli-nodejs/config.json`, which the plugin reads automatically.
-
-### 3. Validate the Key
-
-Use the `bland_call_list` MCP tool with `limit: 1` to confirm authentication works. A successful response returns call data (or an empty array if no calls have been made yet). A 401 error means the key is invalid or missing.
-
-## Error Codes
-
-- `401` — Invalid or missing API key
-- `403` — Key lacks permission for this operation
-- `429` — Rate limited, back off and retry
+If the user encounters billing-related errors when making calls, direct them to **https://app.bland.ai** to add payment details under **Settings > Billing**. The initial setup provides a free phone number and persona, but usage beyond the free tier requires billing setup.

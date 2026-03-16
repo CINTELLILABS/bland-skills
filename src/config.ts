@@ -9,7 +9,7 @@ const DEFAULT_BASE_URL = "https://api.bland.ai";
 //   macOS:  ~/Library/Preferences/bland-cli-nodejs/config.json
 //   Linux:  ~/.config/bland-cli-nodejs/config.json
 //   Win:    %APPDATA%/bland-cli-nodejs/config.json
-function getBlandCliConfigPath(): string {
+export function getBlandCliConfigPath(): string {
   const platform = os.platform();
   if (platform === "darwin") {
     return path.join(
