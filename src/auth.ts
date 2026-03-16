@@ -34,7 +34,15 @@ function findFreePort(): Promise<number> {
   });
 }
 
+function isValidApiKey(key: unknown): key is string {
+  return typeof key === "string" && /^[a-zA-Z0-9_\-]{10,}$/.test(key);
+}
+
 function saveApiKeyToConfig(apiKey: string): void {
+  if (!isValidApiKey(apiKey)) {
+    throw new Error("Invalid API key format received from server");
+  }
+
   const configPath = getBlandCliConfigPath();
   const configDir = path.dirname(configPath);
 
@@ -64,12 +72,31 @@ const SUCCESS_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
+const ALLOWED_BASE_URLS = [
+  "https://api.bland.ai",
+  "https://staging-api.bland.ai",
+];
+
+function validateBaseUrl(baseUrl: string): string {
+  if (ALLOWED_BASE_URLS.includes(baseUrl)) return baseUrl;
+  try {
+    const parsed = new URL(baseUrl);
+    if (parsed.hostname.endsWith(".bland.ai") && parsed.protocol === "https:") {
+      return baseUrl;
+    }
+  } catch {
+    // invalid URL
+  }
+  throw new Error(`Untrusted base URL: ${baseUrl}`);
+}
+
 async function exchangeToken(
   baseUrl: string,
   token: string,
   retries = 1
 ): Promise<any> {
-  const exchangeUrl = `${baseUrl}/auth/exchange`;
+  const validatedUrl = validateBaseUrl(baseUrl);
+  const exchangeUrl = `${validatedUrl}/auth/exchange`;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
