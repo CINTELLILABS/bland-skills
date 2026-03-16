@@ -93,6 +93,7 @@ function validateBaseUrl(baseUrl: string): string {
 async function exchangeToken(
   baseUrl: string,
   token: string,
+  redirectUri: string,
   retries = 1
 ): Promise<any> {
   const validatedUrl = validateBaseUrl(baseUrl);
@@ -103,7 +104,7 @@ async function exchangeToken(
       const res = await fetch(exchangeUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, redirect_uri: redirectUri }),
       });
 
       if (!res.ok) {
@@ -157,7 +158,7 @@ export async function handleAuthLogin(): Promise<AuthResult> {
 
         try {
           const baseUrl = getBaseUrl();
-          const response = await exchangeToken(baseUrl, token, 1);
+          const response = await exchangeToken(baseUrl, token, redirectUri, 1);
           const data = response.data;
 
           saveApiKeyToConfig(data.api_key);
