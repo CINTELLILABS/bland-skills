@@ -14,7 +14,7 @@ Use the `bland_auth_login` tool. This will:
 1. Open the user's browser to the Bland AI signup/login page
 2. Wait for them to complete authentication
 3. Automatically save the API key to their local config
-4. Return the provisioned phone number and persona (for new metabot signups)
+4. Return the provisioned phone number and persona (for new signups)
 
 If the tool returns `already_authenticated`, the user is good to go — skip to validation.
 

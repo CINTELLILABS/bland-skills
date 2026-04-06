@@ -1,0 +1,17 @@
+node_modules/**
+src/**
+dist/**
+demo/**
+.git/**
+.gitignore
+.claude-plugin/**
+.env
+.env.example
+tsconfig.json
+package.json
+package-lock.json
+*.ts
+*.map
+*.d.ts
+CLAUDE.md
+.shipablesignore
