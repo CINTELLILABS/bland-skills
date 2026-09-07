@@ -570,6 +570,8 @@ function parseJson(val: unknown): unknown {
   }
 }
 
+const VALID_AUTH_MODES = new Set(["auto", "device", "browser"]);
+
 // Picks device vs. browser auth. "auto" (the default) prefers device mode
 // whenever there's no reason to believe a local browser is reachable:
 // running over SSH, or when this process's own stdio isn't an interactive
@@ -595,6 +597,13 @@ export async function handleToolCall(
       const { isAuthenticated } = await import("./config.js");
       if (isAuthenticated()) {
         return "Already authenticated. Your API key is configured and working.";
+      }
+
+      if (args.mode !== undefined && !VALID_AUTH_MODES.has(args.mode as string)) {
+        return JSON.stringify({
+          status: "failed",
+          error: `Invalid mode "${String(args.mode)}": expected "auto", "device", or "browser".`,
+        });
       }
 
       const mode = resolveAuthMode(args.mode);

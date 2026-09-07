@@ -426,10 +426,20 @@ export async function handleDeviceAuthPoll(
     return { success: true, status: "expired" };
   }
 
+  if (status === "pending") {
+    return {
+      success: true,
+      status: "pending",
+      interval: data?.interval as number | undefined,
+      expires_in: data?.expires_in as number | undefined,
+    };
+  }
+
+  // A missing or unrecognized status is a malformed/unexpected payload, not
+  // a silent "keep polling": surface it as a failure instead of pretending
+  // the request is still pending.
   return {
-    success: true,
-    status: "pending",
-    interval: data?.interval as number | undefined,
-    expires_in: data?.expires_in as number | undefined,
+    success: false,
+    error: `Unexpected poll status from server: ${status === undefined ? "missing" : String(status)}`,
   };
 }
