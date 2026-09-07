@@ -256,6 +256,53 @@ function firstErrorMessage(payload: OnboardingApiResponse | null, fallback: stri
   return payload?.errors?.[0]?.message || fallback;
 }
 
+function genericErrorResult(
+  res: Response,
+  payload: OnboardingApiResponse | null
+): { success: false; error: string } {
+  return {
+    success: false,
+    error: firstErrorMessage(payload, `Request failed: ${res.status} ${res.statusText}`),
+  };
+}
+
+type OnboardingRequestResult =
+  | { ok: true; res: Response; payload: OnboardingApiResponse | null }
+  | { ok: false; error: string };
+
+// Shared by handleDeviceAuthLogin and handleDeviceAuthPoll: resolve/validate
+// the base URL, POST the body, and parse the response. Status-code-specific
+// handling (503 on start, 429/SLOW_DOWN on poll, the generic !res.ok
+// fallback) stays with each caller since it differs per endpoint.
+async function postOnboarding(
+  path: string,
+  body: Record<string, unknown>
+): Promise<OnboardingRequestResult> {
+  let baseUrl: string;
+  try {
+    baseUrl = validateBaseUrl(getBaseUrl());
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: `NETWORK_ERROR: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+
+  const payload = await parseJsonSafe(res);
+  return { ok: true, res, payload };
+}
+
 /**
  * Start a device-authorization flow (RFC 8628 style). Unlike handleAuthLogin,
  * this never blocks: an MCP tool call can't hold a connection open for the
@@ -267,28 +314,13 @@ function firstErrorMessage(payload: OnboardingApiResponse | null, fallback: stri
 export async function handleDeviceAuthLogin(
   clientName?: string
 ): Promise<DeviceLoginResult> {
-  let baseUrl: string;
-  try {
-    baseUrl = validateBaseUrl(getBaseUrl());
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  const result = await postOnboarding(AGENT_ONBOARDING_START_PATH, {
+    client_name: clientName || DEFAULT_CLIENT_NAME,
+  });
+  if (!result.ok) {
+    return { success: false, error: result.error };
   }
-
-  let res: Response;
-  try {
-    res = await fetch(`${baseUrl}${AGENT_ONBOARDING_START_PATH}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ client_name: clientName || DEFAULT_CLIENT_NAME }),
-    });
-  } catch (err) {
-    return {
-      success: false,
-      error: `NETWORK_ERROR: ${err instanceof Error ? err.message : String(err)}`,
-    };
-  }
-
-  const payload = await parseJsonSafe(res);
+  const { res, payload } = result;
 
   if (res.status === 503) {
     return {
@@ -298,10 +330,7 @@ export async function handleDeviceAuthLogin(
   }
 
   if (!res.ok) {
-    return {
-      success: false,
-      error: firstErrorMessage(payload, `Request failed: ${res.status} ${res.statusText}`),
-    };
+    return genericErrorResult(res, payload);
   }
 
   const data = payload?.data;
@@ -333,28 +362,11 @@ export async function handleDeviceAuthPoll(
     return { success: false, error: "device_code is required" };
   }
 
-  let baseUrl: string;
-  try {
-    baseUrl = validateBaseUrl(getBaseUrl());
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  const result = await postOnboarding(AGENT_ONBOARDING_POLL_PATH, { device_code: deviceCode });
+  if (!result.ok) {
+    return { success: false, error: result.error };
   }
-
-  let res: Response;
-  try {
-    res = await fetch(`${baseUrl}${AGENT_ONBOARDING_POLL_PATH}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ device_code: deviceCode }),
-    });
-  } catch (err) {
-    return {
-      success: false,
-      error: `NETWORK_ERROR: ${err instanceof Error ? err.message : String(err)}`,
-    };
-  }
-
-  const payload = await parseJsonSafe(res);
+  const { res, payload } = result;
 
   if (res.status === 429) {
     const err0 = payload?.errors?.[0];
@@ -365,10 +377,7 @@ export async function handleDeviceAuthPoll(
   }
 
   if (!res.ok) {
-    return {
-      success: false,
-      error: firstErrorMessage(payload, `Request failed: ${res.status} ${res.statusText}`),
-    };
+    return genericErrorResult(res, payload);
   }
 
   const data = payload?.data;
