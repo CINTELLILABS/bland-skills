@@ -660,13 +660,17 @@ export async function handleToolCall(
       }
 
       if (result.status === "approved") {
+        const planLabel = result.plan ? result.plan.display_name || result.plan.name : null;
+        const planSummary = planLabel
+          ? `${planLabel}${result.phone_number ? ` on ${result.phone_number}` : ""}`
+          : null;
         return JSON.stringify({
           status: "approved",
           message: "API key saved to config. You are ready to make calls and send texts.",
           api_key_preview: result.api_key ? result.api_key.slice(0, 8) + "..." : null,
           org_id: result.org_id,
           phone_number: result.phone_number,
-          plan: result.plan,
+          plan_summary: planSummary,
           client_name: result.client_name,
         });
       }

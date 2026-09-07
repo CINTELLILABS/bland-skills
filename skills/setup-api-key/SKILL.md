@@ -20,7 +20,7 @@ Works whether you're running locally, over SSH, or as a hosted bot with no brows
 4. Poll `bland_auth_poll` with the `device_code`, waiting `interval` seconds between calls. Keep polling until `expires_in` elapses (up to 15 minutes).
    - `status: "pending"`: keep polling at the given `interval`.
    - `status: "slow_down"`: you polled too fast, wait the new `interval` before the next call.
-   - `status: "approved"`: the API key is saved to local config automatically. Confirm the provisioned phone number and plan to the user.
+   - `status: "approved"`: the API key is saved to local config automatically. Confirm the provisioned phone number (`phone_number`) and plan (`plan_summary`) to the user.
    - `status: "expired"`: the code timed out before the human finished. Call `bland_auth_login` again for a fresh code and restart from step 3.
 
 ## Browser Loopback (Fallback)

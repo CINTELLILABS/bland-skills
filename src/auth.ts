@@ -31,13 +31,26 @@ export interface DeviceLoginResult {
 
 export type DevicePollStatus = "pending" | "approved" | "expired" | "slow_down";
 
+export type AgentPhonePlanStatus = "active" | "past_due" | "canceled" | "none";
+
+export interface AgentPhonePlanSummary {
+  name: string;
+  display_name: string;
+  status: AgentPhonePlanStatus;
+  phone_number: string | null;
+  concurrency: number;
+  max_call_duration_minutes: number;
+  allowed_countries: string[];
+  current_period_end: string | null;
+}
+
 export interface DevicePollResult {
   success: boolean;
   status?: DevicePollStatus;
   api_key?: string;
   org_id?: string;
   phone_number?: string | null;
-  plan?: string;
+  plan?: AgentPhonePlanSummary | null;
   client_name?: string;
   interval?: number;
   expires_in?: number;
@@ -402,7 +415,7 @@ export async function handleDeviceAuthPoll(
       api_key: apiKey,
       org_id: data?.org_id as string | undefined,
       phone_number: (data?.phone_number as string | null | undefined) ?? null,
-      plan: data?.plan as string | undefined,
+      plan: (data?.plan as AgentPhonePlanSummary | null | undefined) ?? null,
       client_name: data?.client_name as string | undefined,
     };
   }
