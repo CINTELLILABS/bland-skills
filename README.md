@@ -36,7 +36,12 @@ Just ask the agent:
 
 > "Log in to Bland AI"
 
-The `bland_auth_login` tool opens your browser to sign up or log in, then saves your API key automatically. No manual env setup needed.
+The `bland_auth_login` tool picks the right flow for the environment:
+
+- **Device mode** (default when headless or over SSH, e.g. a hosted bot with no browser of its own): returns a short code and a link immediately. Open the link in any browser, sign up or log in, subscribe to the Agent Phone Plan ($29.99/mo), and enter the code. The agent polls `bland_auth_poll` in the background and saves the API key once approved.
+- **Browser mode** (default on an interactive local session): opens your browser to sign up or log in, then saves your API key automatically.
+
+Pass `mode: "device"` or `mode: "browser"` to force a specific flow. No manual env setup needed either way.
 
 **Alternative**: Set `BLAND_API_KEY` in your shell profile:
 
@@ -79,7 +84,8 @@ The MCP server resolves your API key automatically:
 All API operations go through MCP tools (prefixed `bland_`):
 
 ### Auth
-- `bland_auth_login` — Browser-based signup/login, saves API key automatically
+- `bland_auth_login`: Authenticate via device code (headless/hosted) or browser loopback (local), saves API key automatically
+- `bland_auth_poll`: Poll for completion of a device-mode login
 
 ### Calls
 - `bland_call_send` — Make outbound call (persona_id, task, or pathway_id)

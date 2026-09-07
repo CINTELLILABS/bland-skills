@@ -32,7 +32,7 @@ function handleMessage(msg: JsonRpcRequest): void {
         result: {
           protocolVersion: "2024-11-05",
           capabilities: { tools: {} },
-          serverInfo: { name: "bland-plugin", version: "2.0.0" },
+          serverInfo: { name: "bland-plugin", version: "2.2.0" },
         },
       });
       break;

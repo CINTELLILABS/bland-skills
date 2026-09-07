@@ -24,11 +24,37 @@ export const MCP_TOOLS: McpTool[] = [
   {
     name: "bland_auth_login",
     description:
-      "Authenticate with Bland AI. Opens a browser for signup/login, then automatically saves the API key to local config. Returns immediately if already authenticated. On failure, returns manual fallback instructions.",
+      "Start authentication with Bland AI. Returns immediately if already authenticated. In device mode (the default when headless or over SSH), returns a code and link for a human to open elsewhere, then poll bland_auth_poll for completion. In browser mode, opens a local browser and blocks until signup/login finishes, saving the API key automatically. On failure, returns manual fallback instructions.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        mode: {
+          type: "string",
+          description:
+            'Auth flow: "auto" (default, device mode when headless/over SSH/non-TTY, otherwise browser), "device" (always return a code and link), or "browser" (always open a local browser and block).',
+        },
+        client_name: {
+          type: "string",
+          description:
+            'Name shown to the human during device auth, identifying which bot is requesting access (default: "bland-skills").',
+        },
+      },
       required: [],
+    },
+  },
+  {
+    name: "bland_auth_poll",
+    description:
+      "Poll for completion of a device-mode login started by bland_auth_login. Call roughly every `interval` seconds (from the login response, or from a prior slow_down response) until status is approved or expired. Saves the API key to local config automatically once approved.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        device_code: {
+          type: "string",
+          description: "The device_code returned by bland_auth_login in device mode.",
+        },
+      },
+      required: ["device_code"],
     },
   },
 
@@ -544,6 +570,18 @@ function parseJson(val: unknown): unknown {
   }
 }
 
+// Picks device vs. browser auth. "auto" (the default) prefers device mode
+// whenever there's no reason to believe a local browser is reachable:
+// running over SSH, or when this process's own stdio isn't an interactive
+// terminal (true for hosted bots, and for the MCP server itself, which
+// always talks JSON-RPC over piped stdio).
+function resolveAuthMode(mode: unknown): "device" | "browser" {
+  if (mode === "device") return "device";
+  if (mode === "browser") return "browser";
+  if (process.env.SSH_CONNECTION || !process.stdout.isTTY) return "device";
+  return "browser";
+}
+
 type ApiClient = ReturnType<typeof createApiClient>;
 
 export async function handleToolCall(
@@ -554,6 +592,38 @@ export async function handleToolCall(
   switch (name) {
     // ── Auth ──
     case "bland_auth_login": {
+      const { isAuthenticated } = await import("./config.js");
+      if (isAuthenticated()) {
+        return "Already authenticated. Your API key is configured and working.";
+      }
+
+      const mode = resolveAuthMode(args.mode);
+      const clientName = (args.client_name as string) || "bland-skills";
+
+      if (mode === "device") {
+        const { handleDeviceAuthLogin } = await import("./auth.js");
+        const result = await handleDeviceAuthLogin(clientName);
+        if (!result.success) {
+          return JSON.stringify({
+            status: "failed",
+            error: result.error,
+            manual_fallback:
+              "Ask the user to: 1) Go to https://app.bland.ai and sign up, 2) Copy their API key from Settings > API Keys, 3) Paste it here. Then save it to their environment or config.",
+          });
+        }
+        return JSON.stringify({
+          status: "awaiting_approval",
+          mode: "device",
+          user_code: result.user_code,
+          verification_url: result.verification_url,
+          verification_url_complete: result.verification_url_complete,
+          device_code: result.device_code,
+          expires_in: result.expires_in,
+          interval: result.interval,
+          instructions: `Tell the human, verbatim: open ${result.verification_url_complete} and enter the code ${result.user_code}. Then call bland_auth_poll with device_code "${result.device_code}" every ${result.interval} seconds until it reports approved or expired.`,
+        });
+      }
+
       const { handleAuthLogin } = await import("./auth.js");
       const result = await handleAuthLogin();
       if (result.success && result.already_authenticated) {
@@ -573,6 +643,54 @@ export async function handleToolCall(
         error: result.error,
         manual_fallback:
           "Ask the user to: 1) Go to https://app.bland.ai and sign up, 2) Copy their API key from Settings > API Keys, 3) Paste it here. Then save it to their environment or config.",
+      });
+    }
+
+    case "bland_auth_poll": {
+      const deviceCode = args.device_code as string | undefined;
+      if (!deviceCode) {
+        return JSON.stringify({ status: "failed", error: "device_code is required" });
+      }
+
+      const { handleDeviceAuthPoll } = await import("./auth.js");
+      const result = await handleDeviceAuthPoll(deviceCode);
+
+      if (!result.success) {
+        return JSON.stringify({ status: "failed", error: result.error });
+      }
+
+      if (result.status === "approved") {
+        return JSON.stringify({
+          status: "approved",
+          message: "API key saved to config. You are ready to make calls and send texts.",
+          api_key_preview: result.api_key ? result.api_key.slice(0, 8) + "..." : null,
+          org_id: result.org_id,
+          phone_number: result.phone_number,
+          plan: result.plan,
+          client_name: result.client_name,
+        });
+      }
+
+      if (result.status === "expired") {
+        return JSON.stringify({
+          status: "expired",
+          message: "The device code expired before the human completed setup. Call bland_auth_login again for a fresh code and restart.",
+        });
+      }
+
+      if (result.status === "slow_down") {
+        return JSON.stringify({
+          status: "slow_down",
+          interval: result.interval,
+          message: `Polling too fast. Wait ${result.interval} seconds before the next bland_auth_poll call.`,
+        });
+      }
+
+      return JSON.stringify({
+        status: "pending",
+        interval: result.interval,
+        expires_in: result.expires_in,
+        message: `Still waiting for approval. Poll again in ${result.interval ?? 5} seconds.`,
       });
     }
 

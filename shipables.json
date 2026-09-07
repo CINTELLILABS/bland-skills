@@ -1,5 +1,5 @@
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "keywords": [
     "voice",
     "ai",
@@ -35,8 +35,8 @@
   "config": [
     {
       "name": "BLAND_API_KEY",
-      "description": "Your Bland AI API key (get one at app.bland.ai)",
-      "required": true,
+      "description": "Your Bland AI API key. Optional: omit it and use the bland_auth_login tool to authenticate instead (get a key manually at app.bland.ai if you prefer).",
+      "required": false,
       "secret": true
     }
   ]

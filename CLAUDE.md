@@ -15,7 +15,12 @@ The MCP server resolves the API key automatically using layered fallback:
 1. `BLAND_API_KEY` environment variable (recommended)
 2. Bland CLI config (`~/.config/bland-cli-nodejs/config.json`) if the CLI is installed
 
-No shell setup, no `source` commands, no env file loading needed. If the user hasn't set up auth yet, use the `setup-api-key` skill.
+No shell setup, no `source` commands, no env file loading needed. If the user hasn't set up auth yet, use the `setup-api-key` skill, or call `bland_auth_login` directly:
+
+- **Device mode** (default when headless or over SSH): returns a code and link immediately. Tell the human to open the link and enter the code, then poll `bland_auth_poll` with the returned `device_code` until it reports `approved` or `expired`.
+- **Browser mode** (default on an interactive local session): opens a local browser and blocks until signup/login completes.
+
+Pass `mode: "device"` or `mode: "browser"` to force one.
 
 ## MCP Tools
 

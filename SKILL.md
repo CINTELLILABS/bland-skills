@@ -22,7 +22,12 @@ The MCP server resolves your API key automatically:
 1. `BLAND_API_KEY` environment variable (recommended)
 2. Local config saved by `bland_auth_login` (`~/.config/bland-cli-nodejs/config.json`)
 
-To authenticate interactively, use the `bland_auth_login` tool — it opens a browser to sign up or log in, then saves your API key automatically.
+To authenticate interactively, use `bland_auth_login`. It picks the right flow for the environment:
+
+- **Device mode** (default when headless or over SSH, or pass `mode: "device"`): returns a code and link immediately. Tell the human to open the link and enter the code, then poll `bland_auth_poll` with the returned `device_code` every `interval` seconds until it reports `approved` or `expired`. Use this for hosted bots with no local browser.
+- **Browser mode** (default on an interactive local session, or pass `mode: "browser"`): opens a local browser to sign up or log in and blocks until it completes.
+
+Either flow saves your API key automatically once it succeeds.
 
 **Manual fallback**: Visit https://app.bland.ai, create an account, copy your API key from Settings > API Keys, and set `BLAND_API_KEY` in your environment.
 
