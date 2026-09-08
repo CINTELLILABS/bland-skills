@@ -12,7 +12,7 @@ user-invocable: true
 
 Works whether you're running locally, over SSH, or as a hosted bot with no browser of your own. A human completes signup in their own browser while you poll for the result.
 
-1. Call `bland_auth_login` with `mode: "device"` (or leave `mode` unset, it defaults to device mode automatically when headless or over SSH).
+1. Call `bland_auth_login` with `mode: "device"`, or leave `mode` unset. Unset uses device mode: the MCP server always runs over piped stdio, so `auto` resolves to device.
 2. If the tool returns `already_authenticated`, the user is good to go: skip to Validation.
 3. Otherwise it returns `status: "awaiting_approval"` with `user_code`, `verification_url_complete`, `device_code`, `expires_in` (seconds), and `interval` (seconds). Tell the human, verbatim:
    - "Open `<verification_url_complete>` and enter the code `<user_code>`."
@@ -23,9 +23,9 @@ Works whether you're running locally, over SSH, or as a hosted bot with no brows
    - `status: "approved"`: the API key is saved to local config automatically. Confirm the provisioned phone number (`phone_number`) and plan (`plan_summary`) to the user.
    - `status: "expired"`: the code timed out before the human finished. Call `bland_auth_login` again for a fresh code and restart from step 3.
 
-## Browser Loopback (Fallback)
+## Browser Loopback (Opt-in)
 
-If the agent has a local browser available (ordinary local Claude Code usage) and device mode isn't necessary, call `bland_auth_login` with `mode: "browser"`. This opens a browser to sign up or log in, waits for completion, and saves the API key automatically.
+Browser mode is opt-in. If the agent has a local browser, call `bland_auth_login` with `mode: "browser"`. This opens a browser to sign up or log in, waits for completion, and saves the API key automatically.
 
 If it returns `already_authenticated`, skip to Validation. If it returns `status: "authenticated"`, confirm setup is complete and mention the provisioned phone number if one was returned.
 

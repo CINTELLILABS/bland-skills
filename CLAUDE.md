@@ -17,10 +17,10 @@ The MCP server resolves the API key automatically using layered fallback:
 
 No shell setup, no `source` commands, no env file loading needed. If the user hasn't set up auth yet, use the `setup-api-key` skill, or call `bland_auth_login` directly:
 
-- **Device mode** (default when headless or over SSH): returns a code and link immediately. Tell the human to open the link and enter the code, then poll `bland_auth_poll` with the returned `device_code` until it reports `approved` or `expired`.
-- **Browser mode** (default on an interactive local session): opens a local browser and blocks until signup/login completes.
+- **Device mode** (default): returns a code and link immediately. Tell the human to open the link and enter the code, then poll `bland_auth_poll` with the returned `device_code` until it reports `approved` or `expired`.
+- **Browser mode** (opt in with `mode: "browser"`): opens a local browser and blocks until signup/login completes. Use it only when the agent has a local browser.
 
-Pass `mode: "device"` or `mode: "browser"` to force one.
+Leaving `mode` unset uses device mode.
 
 ## MCP Tools
 

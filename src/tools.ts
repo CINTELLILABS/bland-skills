@@ -24,14 +24,14 @@ export const MCP_TOOLS: McpTool[] = [
   {
     name: "bland_auth_login",
     description:
-      "Start authentication with Bland AI. Returns immediately if already authenticated. In device mode (the default when headless or over SSH), returns a code and link for a human to open elsewhere, then poll bland_auth_poll for completion. In browser mode, opens a local browser and blocks until signup/login finishes, saving the API key automatically. On failure, returns manual fallback instructions.",
+      "Start authentication with Bland AI. Returns immediately if already authenticated. Device mode is the default: returns a code and link for a human to open elsewhere, then poll bland_auth_poll for completion. Browser mode is opt-in (mode: \"browser\"): opens a local browser and blocks until signup/login finishes, saving the API key automatically. On failure, returns manual fallback instructions.",
     inputSchema: {
       type: "object",
       properties: {
         mode: {
           type: "string",
           description:
-            'Auth flow: "auto" (default, device mode when headless/over SSH/non-TTY, otherwise browser), "device" (always return a code and link), or "browser" (always open a local browser and block).',
+            'Auth flow: "auto" (default; resolves to device under the MCP server, which always runs over piped stdio), "device" (always return a code and link), or "browser" (opt in: always open a local browser and block).',
         },
         client_name: {
           type: "string",
