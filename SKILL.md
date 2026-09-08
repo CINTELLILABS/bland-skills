@@ -24,8 +24,10 @@ The MCP server resolves your API key automatically:
 
 To authenticate interactively, use `bland_auth_login`. It supports two flows:
 
-- **Device mode** (default, or pass `mode: "device"`): returns a code and link immediately. Tell the human to open the link and enter the code, then poll `bland_auth_poll` with the returned `device_code` every `interval` seconds until it reports `approved` or `expired`. Works locally, over SSH, or as a hosted bot with no local browser.
+- **Device mode** (default under the MCP server, or pass `mode: "device"`): returns a code and link immediately. Tell the human to open the link and enter the code, then poll `bland_auth_poll` with the returned `device_code` every `interval` seconds until it reports `approved` or `expired`. Works locally, over SSH, or as a hosted bot with no local browser.
 - **Browser mode** (opt in with `mode: "browser"`): opens a local browser to sign up or log in and blocks until it completes. Use it when the agent has a local browser.
+
+Leaving `mode` unset uses device mode under the MCP server, which always runs over piped stdio. When the tools are embedded in-process with the Agent SDK and run in an interactive terminal, unset falls back to browser mode, so pass `mode: "device"` there to be explicit.
 
 Either flow saves your API key automatically once it succeeds.
 

@@ -41,7 +41,7 @@ The `bland_auth_login` tool supports two flows:
 - **Device mode** (default): returns a short code and a link immediately. Open the link in any browser, sign up or log in, subscribe to the Agent Phone Plan ($29.99/mo), and enter the code. The agent polls `bland_auth_poll` in the background and saves the API key once approved. Works locally, over SSH, or as a hosted bot with no browser of its own.
 - **Browser mode** (opt in with `mode: "browser"`): opens your browser to sign up or log in, then saves your API key automatically. Use it when the agent has a local browser.
 
-Leaving `mode` unset uses device mode. No manual env setup needed either way.
+Leaving `mode` unset uses device mode under the MCP server, which always runs over piped stdio. If you embed the tools in-process with the Agent SDK (see Programmatic Usage below) and run in an interactive terminal, unset falls back to browser mode, so pass `mode: "device"` there to be explicit. No manual env setup needed either way.
 
 **Alternative**: Set `BLAND_API_KEY` in your shell profile:
 
