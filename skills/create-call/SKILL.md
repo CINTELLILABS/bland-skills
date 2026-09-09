@@ -112,6 +112,8 @@ If the user prefers a one-off call without a persona, use the `bland_call_send` 
 | `webhook` | string | Post-call webhook URL |
 | `language` | string | Language code (`en`, `es`, etc.) |
 | `tools` | string[] | IDs of knowledge bases and/or custom tools (e.g. `["kb_...", "TL-..."]`) |
+| `voicemail` | object | What to do when the call reaches voicemail (default: hang up) |
+| `keywords` | string[] | Proper nouns to boost in the transcription engine |
 | `transfer_phone_number` | string | Number to transfer to if needed |
 | `interruption_threshold` | number | 0-255, lower = more interruptible |
 | `model` | string | LLM model to use |
@@ -190,6 +192,48 @@ Multiple tools and KBs can be combined:
 ```
 
 **Important**: Knowledge bases must be in `COMPLETED` status before attaching. Use the `knowledge-base` skill to create and check KB status.
+
+## Voicemail Handling
+
+**By default a call that reaches voicemail hangs up without leaving anything.** On cold outbound this is usually most of your calls, so decide the behavior up front rather than discovering it in the results. Pass `voicemail` to change it:
+
+```json
+{
+  "phone_number": "+14155551234",
+  "task": "Call to confirm tomorrow's appointment.",
+  "voicemail": {
+    "action": "leave_message",
+    "message": "Hi, this is Bland calling to confirm your appointment tomorrow at 2pm. Please call us back to reschedule."
+  }
+}
+```
+
+`action` is one of:
+
+| Action | Behavior |
+|--------|----------|
+| `hangup` | Default — end the call as soon as voicemail is detected |
+| `leave_message` | Play `message` after the beep, then hang up |
+| `leave_message_and_sms` | Leave the message, then text the recipient (also pass `sms`) |
+| `ignore` | Keep talking through the greeting as if a human answered |
+
+`message` is required for `leave_message` and `leave_message_and_sms`. For SMS, add `"sms": {"to": "+1...", "from": "+1...", "message": "..."}` — `from` must be a number you own with SMS permissions. Add `"sensitive": true` to opt into slower LLM-based voicemail detection when the default detector is missing greetings.
+
+After the call, `bland_call_get` reports `answered_by` (`human`, `voicemail`, `machine`) so you can tell which path ran.
+
+## Transcribing Proper Nouns
+
+The transcriber will mangle names it has never seen — a shop called "Komeya" can come back as "Carmiano Bank", and the agent then repeats the wrong name back to the customer. Pass `keywords` with any proper noun the call depends on (business, product, and people names, plus jargon):
+
+```json
+{
+  "phone_number": "+14155551234",
+  "task": "Call Komeya and ask whether they carry Koshihikari rice.",
+  "keywords": ["Komeya", "Koshihikari"]
+}
+```
+
+Append `":N"` to raise a term's boost factor above the default of 2 (e.g. `"Komeya:3"`). Max 20 keywords, each under 100 characters. If a transcript comes back with a garbled name, re-run the call with that name in `keywords`.
 
 ## Common Patterns
 
