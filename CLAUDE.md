@@ -15,7 +15,12 @@ The MCP server resolves the API key automatically using layered fallback:
 1. `BLAND_API_KEY` environment variable (recommended)
 2. Bland CLI config (`~/.config/bland-cli-nodejs/config.json`) if the CLI is installed
 
-No shell setup, no `source` commands, no env file loading needed. If the user hasn't set up auth yet, use the `setup-api-key` skill.
+No shell setup, no `source` commands, no env file loading needed. If the user hasn't set up auth yet, use the `setup-api-key` skill, or call `bland_auth_login` directly:
+
+- **Device mode** (default): returns a code and link immediately. Tell the human to open the link and enter the code, then poll `bland_auth_poll` with the returned `device_code` until it reports `approved` or `expired`.
+- **Browser mode** (opt in with `mode: "browser"`): opens a local browser and blocks until signup/login completes. Use it only when the agent has a local browser.
+
+Leaving `mode` unset uses device mode under the MCP server, which always runs over piped stdio. When the tools are embedded in-process with the Agent SDK and run in an interactive terminal, unset falls back to browser mode, so pass `mode: "device"` there to be explicit.
 
 ## MCP Tools
 

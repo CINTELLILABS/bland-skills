@@ -8,21 +8,30 @@ user-invocable: true
 
 # Setting Up Your Bland AI API Key
 
-## Automatic Setup (Preferred)
+## Device Flow (Preferred)
 
-Use the `bland_auth_login` tool. This will:
-1. Open the user's browser to the Bland AI signup/login page
-2. Wait for them to complete authentication
-3. Automatically save the API key to their local config
-4. Return the provisioned phone number and persona (for new signups)
+Works whether you're running locally, over SSH, or as a hosted bot with no browser of your own. A human completes signup in their own browser while you poll for the result.
 
-If the tool returns `already_authenticated`, the user is good to go — skip to validation.
+1. Call `bland_auth_login` with `mode: "device"`, or leave `mode` unset. Unset uses device mode: the MCP server always runs over piped stdio, so `auto` resolves to device.
+2. If the tool returns `already_authenticated`, the user is good to go: skip to Validation.
+3. Otherwise it returns `status: "awaiting_approval"` with `user_code`, `verification_url_complete`, `device_code`, `expires_in` (seconds), and `interval` (seconds). Tell the human, verbatim:
+   - "Open `<verification_url_complete>` and enter the code `<user_code>`."
+   - Mention that signing up (or logging in) requires subscribing to the Agent Phone Plan ($29.99/mo).
+4. Poll `bland_auth_poll` with the `device_code`, waiting `interval` seconds between calls. Keep polling until `expires_in` elapses (up to 15 minutes).
+   - `status: "pending"`: keep polling at the given `interval`.
+   - `status: "slow_down"`: you polled too fast, wait the new `interval` before the next call.
+   - `status: "approved"`: the API key is saved to local config automatically. Confirm the provisioned phone number (`phone_number`) and plan (`plan_summary`) to the user.
+   - `status: "expired"`: the code timed out before the human finished. Call `bland_auth_login` again for a fresh code and restart from step 3.
 
-If the tool returns `status: "authenticated"`, confirm to the user that setup is complete and mention their provisioned phone number if one was returned.
+## Browser Loopback (Opt-in)
+
+Browser mode is opt-in. If the agent has a local browser, call `bland_auth_login` with `mode: "browser"`. This opens a browser to sign up or log in, waits for completion, and saves the API key automatically.
+
+If it returns `already_authenticated`, skip to Validation. If it returns `status: "authenticated"`, confirm setup is complete and mention the provisioned phone number if one was returned.
 
 ## Manual Fallback
 
-If `bland_auth_login` fails (timeout, port issues, browser won't open), fall back to manual setup:
+If both flows fail (timeout, no browser, network issues), fall back to manual setup:
 
 1. Tell the user to visit **https://app.bland.ai** and create an account
 2. After signup, navigate to **Settings > API Keys** and copy the key (starts with `org_`)
@@ -35,7 +44,7 @@ If `bland_auth_login` fails (timeout, port issues, browser won't open), fall bac
 
 ## Validation
 
-After setup (automatic or manual), validate the key works by calling `bland_call_list` with `limit: 1`.
+After setup (any method), validate the key works by calling `bland_call_list` with `limit: 1`.
 
 - **Success**: Returns a list (even if empty) — the key is valid
 - **401 error**: Key is invalid — ask the user to try again
@@ -43,4 +52,4 @@ After setup (automatic or manual), validate the key works by calling `bland_call
 
 ## Billing Issues
 
-If the user encounters billing-related errors when making calls, direct them to **https://app.bland.ai** to add payment details under **Settings > Billing**. The initial setup provides a free phone number and persona, but usage beyond the free tier requires billing setup.
+If the user encounters billing-related errors when making calls, direct them to **https://app.bland.ai** to check their plan and payment details. Device-flow setup requires an active Agent Phone Plan subscription; other usage may need a different plan or additional payment setup under Settings > Billing.

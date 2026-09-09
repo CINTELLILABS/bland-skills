@@ -18,6 +18,49 @@ interface AuthResult {
   error?: string;
 }
 
+export interface DeviceLoginResult {
+  success: boolean;
+  device_code?: string;
+  user_code?: string;
+  verification_url?: string;
+  verification_url_complete?: string;
+  expires_in?: number;
+  interval?: number;
+  error?: string;
+}
+
+export type DevicePollStatus = "pending" | "approved" | "expired" | "slow_down";
+
+export type AgentPhonePlanStatus = "active" | "past_due" | "canceled" | "none";
+
+export interface AgentPhonePlanSummary {
+  name: string;
+  display_name: string;
+  status: AgentPhonePlanStatus;
+  phone_number: string | null;
+  concurrency: number;
+  max_call_duration_minutes: number;
+  allowed_countries: string[];
+  current_period_end: string | null;
+}
+
+export interface DevicePollResult {
+  success: boolean;
+  status?: DevicePollStatus;
+  api_key?: string;
+  org_id?: string;
+  phone_number?: string | null;
+  plan?: AgentPhonePlanSummary | null;
+  client_name?: string;
+  interval?: number;
+  expires_in?: number;
+  error?: string;
+}
+
+const DEFAULT_CLIENT_NAME = "bland-skills";
+const AGENT_ONBOARDING_START_PATH = "/v1/agent/onboarding/start";
+const AGENT_ONBOARDING_POLL_PATH = "/v1/agent/onboarding/poll";
+
 function findFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -201,4 +244,202 @@ export async function handleAuthLogin(): Promise<AuthResult> {
       });
     }, AUTH_TIMEOUT_MS);
   });
+}
+
+interface OnboardingApiError {
+  error?: string;
+  message?: string;
+  interval?: number;
+}
+
+interface OnboardingApiResponse {
+  data?: Record<string, unknown> | null;
+  errors?: OnboardingApiError[] | null;
+}
+
+async function parseJsonSafe(res: Response): Promise<OnboardingApiResponse | null> {
+  try {
+    return (await res.json()) as OnboardingApiResponse;
+  } catch {
+    return null;
+  }
+}
+
+function firstErrorMessage(payload: OnboardingApiResponse | null, fallback: string): string {
+  return payload?.errors?.[0]?.message || fallback;
+}
+
+function genericErrorResult(
+  res: Response,
+  payload: OnboardingApiResponse | null
+): { success: false; error: string } {
+  return {
+    success: false,
+    error: firstErrorMessage(payload, `Request failed: ${res.status} ${res.statusText}`),
+  };
+}
+
+type OnboardingRequestResult =
+  | { ok: true; res: Response; payload: OnboardingApiResponse | null }
+  | { ok: false; error: string };
+
+// Shared by handleDeviceAuthLogin and handleDeviceAuthPoll: resolve/validate
+// the base URL, POST the body, and parse the response. Status-code-specific
+// handling (503 on start, 429/SLOW_DOWN on poll, the generic !res.ok
+// fallback) stays with each caller since it differs per endpoint.
+async function postOnboarding(
+  path: string,
+  body: Record<string, unknown>
+): Promise<OnboardingRequestResult> {
+  let baseUrl: string;
+  try {
+    baseUrl = validateBaseUrl(getBaseUrl());
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: `NETWORK_ERROR: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+
+  const payload = await parseJsonSafe(res);
+  return { ok: true, res, payload };
+}
+
+/**
+ * Start a device-authorization flow (RFC 8628 style). Unlike handleAuthLogin,
+ * this never blocks: an MCP tool call can't hold a connection open for the
+ * up-to-15-minute window a human needs to complete signup in their own
+ * browser, especially when that human isn't on the same machine as the
+ * agent. Returns the code and link immediately; the caller polls
+ * handleDeviceAuthPoll separately, one call at a time.
+ */
+export async function handleDeviceAuthLogin(
+  clientName?: string
+): Promise<DeviceLoginResult> {
+  const result = await postOnboarding(AGENT_ONBOARDING_START_PATH, {
+    client_name: clientName || DEFAULT_CLIENT_NAME,
+  });
+  if (!result.ok) {
+    return { success: false, error: result.error };
+  }
+  const { res, payload } = result;
+
+  if (res.status === 503) {
+    return {
+      success: false,
+      error: firstErrorMessage(payload, "Device login is temporarily unavailable. Try again shortly."),
+    };
+  }
+
+  if (!res.ok) {
+    return genericErrorResult(res, payload);
+  }
+
+  const data = payload?.data;
+  if (!data || typeof data.device_code !== "string" || typeof data.user_code !== "string") {
+    return { success: false, error: "Malformed response from onboarding start endpoint" };
+  }
+
+  return {
+    success: true,
+    device_code: data.device_code,
+    user_code: data.user_code,
+    verification_url: data.verification_url as string | undefined,
+    verification_url_complete: data.verification_url_complete as string | undefined,
+    expires_in: data.expires_in as number | undefined,
+    interval: data.interval as number | undefined,
+  };
+}
+
+/**
+ * Poll a device code started by handleDeviceAuthLogin. On approval, the API
+ * key is saved to local config here (mirroring saveApiKeyToConfig's use in
+ * handleAuthLogin). Callers should only ever surface a short preview of the
+ * key, never the full value.
+ */
+export async function handleDeviceAuthPoll(
+  deviceCode: string
+): Promise<DevicePollResult> {
+  if (!deviceCode) {
+    return { success: false, error: "device_code is required" };
+  }
+
+  const result = await postOnboarding(AGENT_ONBOARDING_POLL_PATH, { device_code: deviceCode });
+  if (!result.ok) {
+    return { success: false, error: result.error };
+  }
+  const { res, payload } = result;
+
+  if (res.status === 429) {
+    const err0 = payload?.errors?.[0];
+    if (err0?.error === "SLOW_DOWN") {
+      return { success: true, status: "slow_down", interval: err0.interval };
+    }
+    return { success: false, error: firstErrorMessage(payload, "Rate limited") };
+  }
+
+  if (!res.ok) {
+    return genericErrorResult(res, payload);
+  }
+
+  const data = payload?.data;
+  const status = data?.status as DevicePollStatus | undefined;
+
+  if (status === "approved") {
+    const apiKey = data?.api_key as string | undefined;
+    if (!apiKey) {
+      return { success: false, error: "Server approved the request but did not return an API key" };
+    }
+    try {
+      saveApiKeyToConfig(apiKey);
+    } catch (err) {
+      return {
+        success: false,
+        error: `Failed to save API key: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+    return {
+      success: true,
+      status: "approved",
+      api_key: apiKey,
+      org_id: data?.org_id as string | undefined,
+      phone_number: (data?.phone_number as string | null | undefined) ?? null,
+      plan: (data?.plan as AgentPhonePlanSummary | null | undefined) ?? null,
+      client_name: data?.client_name as string | undefined,
+    };
+  }
+
+  // A missing/expired record and a never-existed device_code both surface
+  // here as "expired": the server never distinguishes them, on purpose.
+  if (status === "expired") {
+    return { success: true, status: "expired" };
+  }
+
+  if (status === "pending") {
+    return {
+      success: true,
+      status: "pending",
+      interval: data?.interval as number | undefined,
+      expires_in: data?.expires_in as number | undefined,
+    };
+  }
+
+  // A missing or unrecognized status is a malformed/unexpected payload, not
+  // a silent "keep polling": surface it as a failure instead of pretending
+  // the request is still pending.
+  return {
+    success: false,
+    error: `Unexpected poll status from server: ${status === undefined ? "missing" : String(status)}`,
+  };
 }

@@ -55,7 +55,7 @@ export function createBlandMcpServer(apiKey?: string) {
 
   return createSdkMcpServer({
     name: "bland",
-    version: "2.0.0",
+    version: "2.2.0",
     tools: sdkTools,
   });
 }
