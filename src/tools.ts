@@ -62,7 +62,7 @@ export const MCP_TOOLS: McpTool[] = [
   {
     name: "bland_call_send",
     description:
-      "Make an outbound phone call via Bland AI. Use persona_id for persona-based calls, or task/pathway_id for one-off calls.",
+      "Make an outbound phone call via Bland AI. Use persona_id for persona-based calls, or task/pathway_id for one-off calls. Voicemail: by default a call that reaches voicemail hangs up without leaving anything — pass `voicemail` to change that (action leave_message to leave a recorded message, leave_message_and_sms to also text, or ignore to keep talking through the greeting). Transcription: pass `keywords` with any proper nouns the call depends on — shop, product, and people names are otherwise routinely mis-transcribed into unrelated words.",
     inputSchema: {
       type: "object",
       properties: {
@@ -127,6 +127,16 @@ export const MCP_TOOLS: McpTool[] = [
           type: "string",
           description:
             'JSON array of tool/KB IDs (e.g. ["KB-...", "TL-..."])',
+        },
+        voicemail: {
+          type: "string",
+          description:
+            'Voicemail handling (JSON string). Defaults to hanging up the moment voicemail is detected. Shape: {"action": "hangup" | "leave_message" | "leave_message_and_sms" | "ignore", "message": "played after the beep, required for leave_message and leave_message_and_sms", "sms": {"to": "+1...", "from": "+1... (a number you own)", "message": "..."}, "sensitive": true}. "ignore" keeps the agent talking through the greeting; "sensitive" opts into slower LLM-based detection.',
+        },
+        keywords: {
+          type: "string",
+          description:
+            'JSON array of words to boost in the transcription engine (e.g. ["Komeya", "Blandy:3"]) — use it for proper nouns the call depends on (business, product, and people names), which are otherwise routinely mis-transcribed. Append ":N" to set a boost factor (default 2). Max 20 keywords, each under 100 characters.',
         },
       },
       required: ["phone_number"],
@@ -730,6 +740,8 @@ export async function handleToolCall(
       if (args.request_data)
         body.request_data = parseJson(args.request_data);
       if (args.tools) body.tools = parseJson(args.tools);
+      if (args.voicemail) body.voicemail = parseJson(args.voicemail);
+      if (args.keywords) body.keywords = parseJson(args.keywords);
       return api.post("/v1/calls", body);
     }
 

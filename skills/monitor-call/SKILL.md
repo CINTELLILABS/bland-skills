@@ -42,6 +42,13 @@ The response includes both `concatenated_transcript` (plain text) and `transcrip
 - `variables` — variables set during call
 - `answered_by` — human, voicemail, machine
 
+### Reading a Disappointing Result
+
+Two outcomes look like failures but are really call-creation settings:
+
+- **`answered_by` is `voicemail` and `call_length` is a few seconds.** The call worked; it hit voicemail and hung up, which is the default. To leave a message instead, re-dispatch with the `voicemail` parameter (`action: "leave_message"` plus a `message`) — see the `create-call` skill.
+- **The transcript garbles a name.** Proper nouns the transcriber hasn't seen come back as unrelated words. Re-dispatch with those names in `keywords` — also covered in the `create-call` skill.
+
 ## List Active Calls
 
 Use the `bland_call_active` MCP tool to see all currently in-progress calls:
