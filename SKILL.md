@@ -13,6 +13,8 @@ author:
 
 # Bland AI — Voice Agent Skills
 
+> **Deprecated.** This skill and its repository are no longer maintained. Use the Bland plugin (`/plugin marketplace add CINTELLILABS/bland-plugins`, then `/plugin install bland@bland`) or the Bland CLI's MCP server (`npx -y bland-cli mcp`). See the [README](README.md) for what replaces each part.
+
 Build, deploy, and manage AI-powered phone agents from natural language. This skill provides MCP tools for the full Bland AI API and workflow guidance for common voice agent tasks.
 
 ## Authentication

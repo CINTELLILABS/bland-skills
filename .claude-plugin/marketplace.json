@@ -4,13 +4,13 @@
     "name": "Bland AI"
   },
   "metadata": {
-    "description": "Voice AI agent skills + MCP server for Bland AI — make calls, manage personas, knowledge bases, and more",
-    "version": "2.2.0"
+    "description": "Deprecated. Use the Bland plugin instead: /plugin marketplace add CINTELLILABS/bland-plugins, then /plugin install bland@bland.",
+    "version": "2.2.1"
   },
   "plugins": [
     {
       "name": "bland",
-      "description": "Complete toolkit for Bland AI voice agents — skills for workflow guidance, MCP server for API execution",
+      "description": "Deprecated and no longer maintained. Use bland@bland from CINTELLILABS/bland-plugins, or npx -y bland-cli mcp.",
       "source": "./",
       "strict": false,
       "skills": [
